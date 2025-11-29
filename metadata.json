@@ -1,0 +1,5 @@
+{
+  "name": "Four-Bar Linkage Analyst",
+  "description": "Interactive analysis and animation of a four-bar linkage mechanism with real-time plotting and trajectory tracking.",
+  "requestFramePermissions": []
+}
