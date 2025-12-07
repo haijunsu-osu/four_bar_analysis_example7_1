@@ -6,24 +6,50 @@ import SolutionTable from './components/SolutionTable';
 import { LinkageConfig } from './types';
 import { solveLinkage, computeTrajectory, toDeg } from './utils/math';
 
-const App: React.FC = () => {
-  // Initial State based on prompt:
-  // r1 = 1, r2 = 2, r3 = 3.5, r4 = 4
-  // r6 = sqrt(5) approx 2.236
-  // beta = arctan(0.5) approx 26.565 deg
-  const [config, setConfig] = useState<LinkageConfig>({
-    r1: 1,
-    r2: 2,
-    r3: 3.5,
-    r4: 4,
-    r6: Math.sqrt(5),
-    beta: toDeg(Math.atan(0.5)),
-    theta2: 0,
-  });
+// Icons
+const MenuIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+);
+const SettingsIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+);
+const PlayIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+);
+const PauseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+);
 
+const App: React.FC = () => {
+  // Parse URL parameters for initial config
+  const initialConfig = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const getFloat = (key: string, def: number) => {
+      const val = params.get(key);
+      return val ? parseFloat(val) : def;
+    };
+
+    return {
+      r1: getFloat('r1', 1),
+      r2: getFloat('r2', 2),
+      r3: getFloat('r3', 3.5),
+      r4: getFloat('r4', 4),
+      r6: getFloat('r6', Math.sqrt(5)),
+      beta: getFloat('beta', toDeg(Math.atan(0.5))),
+      theta2: getFloat('theta2', 0),
+    };
+  }, []);
+
+  const isEmbed = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('embed') === 'true';
+  }, []);
+
+  const [config, setConfig] = useState<LinkageConfig>(initialConfig);
   const [assemblyMode, setAssemblyMode] = useState<1 | -1>(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(1);
+  const [isSidebarOpen, setSidebarOpen] = useState(!isEmbed);
   
   // Animation Loop
   const requestRef = useRef<number>();
@@ -69,28 +95,62 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50">
-      <ControlPanel
-        config={config}
-        onChange={setConfig}
-        isPlaying={isPlaying}
-        onTogglePlay={() => setIsPlaying(!isPlaying)}
-        assemblyMode={assemblyMode}
-        onToggleMode={() => setAssemblyMode(m => m === 1 ? -1 : 1)}
-        animationSpeed={animationSpeed}
-        setAnimationSpeed={setAnimationSpeed}
-      />
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 relative">
+      {/* Sidebar Control Panel */}
+      {isSidebarOpen && (
+        <ControlPanel
+          config={config}
+          onChange={setConfig}
+          isPlaying={isPlaying}
+          onTogglePlay={() => setIsPlaying(!isPlaying)}
+          assemblyMode={assemblyMode}
+          onToggleMode={() => setAssemblyMode(m => m === 1 ? -1 : 1)}
+          animationSpeed={animationSpeed}
+          setAnimationSpeed={setAnimationSpeed}
+          onClose={() => setSidebarOpen(false)}
+        />
+      )}
       
-      <main className="flex-1 flex flex-col h-full overflow-hidden p-4 gap-4">
+      <main className="flex-1 flex flex-col h-full overflow-hidden p-4 gap-4 relative">
         {/* Top Section: Visualization and Specific Data */}
-        <div className="flex-1 flex gap-4 min-h-0">
-          <div className="flex-[2] h-full min-h-0">
+        <div className="flex-1 flex gap-4 min-h-0 relative">
+          
+          {/* Canvas Container */}
+          <div className="flex-[2] h-full min-h-0 relative rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white">
             <LinkageCanvas 
               config={config} 
               solution={solution} 
               trajectory={trajectory}
             />
+
+            {/* Floating Controls Overlay */}
+            <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+              <button 
+                onClick={() => setSidebarOpen(!isSidebarOpen)}
+                className="p-2 bg-white/90 backdrop-blur border border-slate-200 rounded-full shadow-sm text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors"
+                title={isSidebarOpen ? "Close Settings" : "Open Settings"}
+              >
+                {isSidebarOpen ? <SettingsIcon /> : <MenuIcon />}
+              </button>
+              
+              {!isSidebarOpen && (
+                <button 
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className={`p-2 border rounded-full shadow-sm transition-colors flex items-center justify-center ${
+                    isPlaying 
+                      ? 'bg-amber-100 border-amber-200 text-amber-600' 
+                      : 'bg-white/90 border-slate-200 text-slate-600 hover:text-blue-600'
+                  }`}
+                  title={isPlaying ? "Pause Animation" : "Play Animation"}
+                >
+                   {isPlaying ? <PauseIcon /> : <PlayIcon />}
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Right/Bottom Side Info - Collapsible or Responsive? */}
+          {/* For embed mode, if width is sufficient, we show it. Flex handles this naturally. */}
           <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-y-auto">
             <SolutionTable config={config} assemblyMode={assemblyMode} />
             
